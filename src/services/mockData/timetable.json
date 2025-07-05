@@ -1,0 +1,98 @@
+[
+  {
+    "Id": 1,
+    "day": "monday",
+    "time": "08:00",
+    "subject": "Mathematics",
+    "class": "Form 1A",
+    "room": "Room 101"
+  },
+  {
+    "Id": 2,
+    "day": "monday",
+    "time": "09:00",
+    "subject": "English",
+    "class": "Form 2B",
+    "room": "Room 201"
+  },
+  {
+    "Id": 3,
+    "day": "monday",
+    "time": "10:00",
+    "subject": "Science",
+    "class": "Form 3C",
+    "room": "Lab 1"
+  },
+  {
+    "Id": 4,
+    "day": "tuesday",
+    "time": "08:00",
+    "subject": "History",
+    "class": "Form 4A",
+    "room": "Room 301"
+  },
+  {
+    "Id": 5,
+    "day": "tuesday",
+    "time": "09:00",
+    "subject": "Geography",
+    "class": "Form 5B",
+    "room": "Room 401"
+  },
+  {
+    "Id": 6,
+    "day": "tuesday",
+    "time": "10:00",
+    "subject": "Art",
+    "class": "Form 2B",
+    "room": "Art Room"
+  },
+  {
+    "Id": 7,
+    "day": "wednesday",
+    "time": "08:00",
+    "subject": "Physical Education",
+    "class": "Form 1A",
+    "room": "Gymnasium"
+  },
+  {
+    "Id": 8,
+    "day": "wednesday",
+    "time": "09:00",
+    "subject": "Mathematics",
+    "class": "Form 3C",
+    "room": "Room 101"
+  },
+  {
+    "Id": 9,
+    "day": "thursday",
+    "time": "08:00",
+    "subject": "English",
+    "class": "Form 1A",
+    "room": "Room 201"
+  },
+  {
+    "Id": 10,
+    "day": "thursday",
+    "time": "09:00",
+    "subject": "Science",
+    "class": "Form 2B",
+    "room": "Lab 1"
+  },
+  {
+    "Id": 11,
+    "day": "friday",
+    "time": "08:00",
+    "subject": "History",
+    "class": "Form 1A",
+    "room": "Room 301"
+  },
+  {
+    "Id": 12,
+    "day": "friday",
+    "time": "09:00",
+    "subject": "Geography",
+    "class": "Form 3C",
+    "room": "Room 401"
+  }
+]

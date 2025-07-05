@@ -1,0 +1,44 @@
+[
+  {
+    "Id": 1,
+    "name": "Chinese New Year",
+    "startDate": "2024-02-10",
+    "endDate": "2024-02-12",
+    "type": "public-holiday"
+  },
+  {
+    "Id": 2,
+    "name": "Mid-term Break",
+    "startDate": "2024-03-15",
+    "endDate": "2024-03-22",
+    "type": "semester-break"
+  },
+  {
+    "Id": 3,
+    "name": "Labour Day",
+    "startDate": "2024-05-01",
+    "endDate": "2024-05-01",
+    "type": "public-holiday"
+  },
+  {
+    "Id": 4,
+    "name": "Hari Raya Puasa",
+    "startDate": "2024-04-10",
+    "endDate": "2024-04-11",
+    "type": "public-holiday"
+  },
+  {
+    "Id": 5,
+    "name": "School Sports Day",
+    "startDate": "2024-05-15",
+    "endDate": "2024-05-15",
+    "type": "school-holiday"
+  },
+  {
+    "Id": 6,
+    "name": "Summer Break",
+    "startDate": "2024-06-01",
+    "endDate": "2024-06-30",
+    "type": "semester-break"
+  }
+]

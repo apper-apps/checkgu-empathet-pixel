@@ -1,0 +1,51 @@
+[
+  {
+    "Id": 1,
+    "name": "Mathematics",
+    "code": "MATH101",
+    "level": "Form 1",
+    "duration": 60
+  },
+  {
+    "Id": 2,
+    "name": "English",
+    "code": "ENG201",
+    "level": "Form 2",
+    "duration": 45
+  },
+  {
+    "Id": 3,
+    "name": "Science",
+    "code": "SCI301",
+    "level": "Form 3",
+    "duration": 60
+  },
+  {
+    "Id": 4,
+    "name": "History",
+    "code": "HIST401",
+    "level": "Form 4",
+    "duration": 45
+  },
+  {
+    "Id": 5,
+    "name": "Geography",
+    "code": "GEO501",
+    "level": "Form 5",
+    "duration": 60
+  },
+  {
+    "Id": 6,
+    "name": "Art",
+    "code": "ART201",
+    "level": "Form 2",
+    "duration": 90
+  },
+  {
+    "Id": 7,
+    "name": "Physical Education",
+    "code": "PE101",
+    "level": "Form 1",
+    "duration": 60
+  }
+]

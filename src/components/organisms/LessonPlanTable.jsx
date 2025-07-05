@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
+import { toast } from 'react-toastify';
 import ApperIcon from '@/components/ApperIcon';
 import Button from '@/components/atoms/Button';
+import { exportToPDF, exportToDOCX } from '@/utils/documentExport';
 
-const LessonPlanTable = ({ lessonPlans, onDelete, onStatusUpdate }) => {
+const LessonPlanTable = ({ lessonPlans, onDelete, onStatusUpdate, onEdit }) => {
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(null);
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed':
@@ -89,25 +94,60 @@ const LessonPlanTable = ({ lessonPlans, onDelete, onStatusUpdate }) => {
                   {plan.status}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+<td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex items-center justify-end space-x-2">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onStatusUpdate(plan.Id, 'completed')}
                     disabled={plan.status === 'completed'}
+                    title="Mark as completed"
                   >
                     <ApperIcon name="CheckCircle" size={16} />
                   </Button>
+                  
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowDownloadMenu(showDownloadMenu === plan.Id ? null : plan.Id)}
+                      disabled={downloadingId === plan.Id}
+                      title="Download lesson plan"
+                    >
+                      {downloadingId === plan.Id ? (
+                        <ApperIcon name="Loader2" size={16} className="animate-spin" />
+                      ) : (
+                        <ApperIcon name="Download" size={16} />
+                      )}
+                    </Button>
+                    
+                    {showDownloadMenu === plan.Id && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                        <div className="py-1">
+                          <button
+                            onClick={() => handleDownload(plan, 'pdf')}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                          >
+                            <ApperIcon name="FileText" size={16} />
+                            <span>Download as PDF</span>
+                          </button>
+                          <button
+                            onClick={() => handleDownload(plan, 'docx')}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                          >
+                            <ApperIcon name="FileText" size={16} />
+                            <span>Download as DOCX</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
                   <Button
                     variant="ghost"
                     size="sm"
-                  >
-                    <ApperIcon name="Download" size={16} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                    onClick={() => onEdit(plan)}
+                    title="Edit lesson plan"
                   >
                     <ApperIcon name="Edit" size={16} />
                   </Button>
@@ -115,17 +155,51 @@ const LessonPlanTable = ({ lessonPlans, onDelete, onStatusUpdate }) => {
                     variant="ghost"
                     size="sm"
                     onClick={() => onDelete(plan.Id)}
+                    title="Delete lesson plan"
                   >
                     <ApperIcon name="Trash2" size={16} />
                   </Button>
                 </div>
-              </td>
+</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   );
+
+  const handleDownload = async (plan, format) => {
+    try {
+      setDownloadingId(plan.Id);
+      setShowDownloadMenu(null);
+      
+      if (format === 'pdf') {
+        exportToPDF(plan);
+        toast.success('PDF downloaded successfully');
+      } else if (format === 'docx') {
+        await exportToDOCX(plan);
+        toast.success('DOCX downloaded successfully');
+      }
+    } catch (error) {
+      toast.error(`Failed to download ${format.toUpperCase()}`);
+      console.error('Download error:', error);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  // Close download menu when clicking outside
+  const handleClickOutside = (e) => {
+    if (!e.target.closest('.relative')) {
+      setShowDownloadMenu(null);
+    }
+  };
+
+  // Add click outside listener
+  if (showDownloadMenu) {
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }
 };
 
 export default LessonPlanTable;

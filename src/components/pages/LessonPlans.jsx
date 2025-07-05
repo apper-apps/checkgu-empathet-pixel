@@ -9,6 +9,7 @@ import Error from '@/components/ui/Error';
 import Empty from '@/components/ui/Empty';
 import LessonPlanTable from '@/components/organisms/LessonPlanTable';
 import UploadModal from '@/components/organisms/UploadModal';
+import EditLessonPlanModal from '@/components/organisms/EditLessonPlanModal';
 import { lessonPlanService } from '@/services/api/lessonPlanService';
 
 const LessonPlans = () => {
@@ -16,7 +17,9 @@ const LessonPlans = () => {
   const [filteredPlans, setFilteredPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedLessonPlan, setSelectedLessonPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -141,12 +144,30 @@ const LessonPlans = () => {
       toast.error('Failed to update status');
       console.error('Status update error:', err);
     }
+}
+  };
+
+  const handleEdit = (lessonPlan) => {
+    setSelectedLessonPlan(lessonPlan);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSave = async (planId, formData) => {
+    try {
+      const updatedPlan = await lessonPlanService.updateContent(planId, formData);
+      setLessonPlans(prev => prev.map(p => 
+        p.Id === planId ? updatedPlan : p
+      ));
+      setIsEditModalOpen(false);
+      setSelectedLessonPlan(null);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const getUniqueSubjects = () => {
     const subjects = [...new Set(lessonPlans.map(plan => plan.subject))];
     return subjects.sort();
-  };
 
   if (loading) return <Loading />;
   if (error) return <Error message={error} onRetry={loadLessonPlans} />;
@@ -308,10 +329,11 @@ const LessonPlans = () => {
       <Card>
         <div className="p-6">
           {filteredPlans.length > 0 ? (
-            <LessonPlanTable
+<LessonPlanTable
               lessonPlans={filteredPlans}
               onDelete={handleDelete}
               onStatusUpdate={handleStatusUpdate}
+              onEdit={handleEdit}
             />
           ) : lessonPlans.length === 0 ? (
             <Empty
@@ -344,11 +366,22 @@ const LessonPlans = () => {
         </div>
       </Card>
 
-      {/* Upload Modal */}
+{/* Upload Modal */}
       <UploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onUpload={handleUpload}
+      />
+
+      {/* Edit Modal */}
+      <EditLessonPlanModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedLessonPlan(null);
+        }}
+        lessonPlan={selectedLessonPlan}
+        onSave={handleEditSave}
       />
     </div>
   );

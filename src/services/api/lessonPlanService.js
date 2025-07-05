@@ -51,5 +51,22 @@ export const lessonPlanService = {
     }
     mockData.splice(index, 1);
     return true;
+},
+
+  async updateContent(id, contentData) {
+    await delay(300);
+    const index = mockData.findIndex(p => p.Id === id);
+    if (index === -1) {
+      throw new Error('Lesson plan not found');
+    }
+    
+    // Update the lesson plan with new content
+    mockData[index] = {
+      ...mockData[index],
+      ...contentData,
+      updatedAt: new Date().toISOString(),
+    };
+    
+    return { ...mockData[index] };
   },
 };

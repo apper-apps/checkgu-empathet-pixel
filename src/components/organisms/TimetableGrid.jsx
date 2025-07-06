@@ -34,20 +34,37 @@ const TimetableGrid = ({
   const today = new Date()
 
   // Effect to handle component mounting and dimension tracking
-  useEffect(() => {
+useEffect(() => {
     const handleResize = () => {
       if (gridRef.current) {
-        const rect = gridRef.current.getBoundingClientRect()
-        setDimensions({ width: rect.width, height: rect.height })
+        try {
+          const rect = gridRef.current.getBoundingClientRect()
+          
+          // Validate dimensions to prevent canvas zero-dimension errors
+          const width = Math.max(rect.width, 100) // Minimum width of 100px
+          const height = Math.max(rect.height, 200) // Minimum height of 200px
+          
+          // Only update if dimensions are valid
+          if (width > 0 && height > 0) {
+            setDimensions({ width, height })
+          }
+        } catch (err) {
+          console.error('Error calculating grid dimensions:', err)
+          // Fallback to default dimensions
+          setDimensions({ width: 800, height: 600 })
+        }
       }
     }
 
     const initializeGrid = () => {
       try {
         if (gridRef.current) {
-          handleResize()
-          setIsLoading(false)
-          setError(null)
+          // Wait for DOM to be fully rendered
+          requestAnimationFrame(() => {
+            handleResize()
+            setIsLoading(false)
+            setError(null)
+          })
         }
       } catch (err) {
         console.error('TimetableGrid initialization error:', err)
@@ -56,23 +73,44 @@ const TimetableGrid = ({
       }
     }
 
-    // Initialize after component mounts
-    const timer = setTimeout(initializeGrid, 100)
+    // Initialize after component mounts with longer delay for DOM readiness
+    const timer = setTimeout(initializeGrid, 200)
     
-    // Add resize listener
-    window.addEventListener('resize', handleResize)
+    // Add resize listener with debouncing
+    let resizeTimeout
+    const debouncedResize = () => {
+      clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(handleResize, 100)
+    }
+    
+    window.addEventListener('resize', debouncedResize)
     
     return () => {
       clearTimeout(timer)
-      window.removeEventListener('resize', handleResize)
+      clearTimeout(resizeTimeout)
+      window.removeEventListener('resize', debouncedResize)
     }
   }, [])
 
-  // Effect to re-measure when timetable data changes
+  // Update dimensions when timetable data changes
   useEffect(() => {
     if (gridRef.current && timetable.length > 0) {
-      const rect = gridRef.current.getBoundingClientRect()
-      setDimensions({ width: rect.width, height: rect.height })
+      try {
+        // Wait for re-render after data change
+        requestAnimationFrame(() => {
+          const rect = gridRef.current.getBoundingClientRect()
+          
+          // Validate dimensions
+          const width = Math.max(rect.width, 100)
+          const height = Math.max(rect.height, 200)
+          
+          if (width > 0 && height > 0) {
+            setDimensions({ width, height })
+          }
+        })
+      } catch (err) {
+        console.error('Error updating grid dimensions:', err)
+      }
     }
   }, [timetable])
 
@@ -226,16 +264,16 @@ return colors[subject] || "bg-gray-100 text-gray-800 border-gray-200"
           </React.Fragment>
         ))}
       </div>
+</div>
 
       {/* Debug information (only in development) */}
-      {process.env.NODE_ENV === 'development' && (
+      {(typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') && (
         <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
           Grid dimensions: {dimensions.width}x{dimensions.height} | 
           Timetable entries: {timetable.length} | 
           Export ready: {dimensions.width > 0 && dimensions.height > 0 ? 'Yes' : 'No'}
         </div>
       )}
-    </div>
   )
 }
 

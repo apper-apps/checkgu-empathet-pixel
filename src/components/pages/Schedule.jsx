@@ -4,7 +4,6 @@ import ApperIcon from "@/components/ApperIcon";
 import TimetableEditor from "@/components/organisms/TimetableEditor";
 import SubjectModal from "@/components/organisms/SubjectModal";
 import SubjectTable from "@/components/organisms/SubjectTable";
-import WeeklyTimetableNavigator from "@/components/organisms/WeeklyTimetableNavigator";
 import Button from "@/components/atoms/Button";
 import Card from "@/components/atoms/Card";
 import Empty from "@/components/ui/Empty";
@@ -201,10 +200,10 @@ const Schedule = () => {
             </p>
           </div>
           <div className="p-6">
-            {timetable.length > 0 ? (
-              <WeeklyTimetableNavigator
-                timetable={timetable}
-              />
+{timetable.length > 0 ? (
+              <Card className="p-6 text-center">
+                <p className="text-gray-600">Timetable data loaded successfully. Use the timetable editor above to manage your schedule.</p>
+              </Card>
             ) : (
               <Empty
                 icon="Calendar"

@@ -1,6 +1,8 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
-import { jsPDF } from 'jspdf';
-import { format } from 'date-fns';
+import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import { jsPDF } from "jspdf";
+import { format } from "date-fns";
+import React from "react";
+import Error from "@/components/ui/Error";
 
 export const exportToPDF = (lessonPlan) => {
   const doc = new jsPDF();
@@ -213,8 +215,7 @@ export const exportToDOCX = async (lessonPlan) => {
           new Paragraph({
             text: "ADDITIONAL NOTES",
             heading: HeadingLevel.HEADING_2,
-          }),
-          new Paragraph({
+new Paragraph({
             text: lessonPlan.notes,
           }),
         ] : []),
@@ -222,12 +223,16 @@ export const exportToDOCX = async (lessonPlan) => {
     }],
   });
 
-  const buffer = await Packer.toBuffer(doc);
-  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${lessonPlan.filename}.docx`;
-  link.click();
-  window.URL.revokeObjectURL(url);
+  try {
+    const blob = await Packer.toBlob(doc);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${lessonPlan.filename}.docx`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error generating DOCX:', error);
+    throw new Error('Failed to generate DOCX document');
+  }
 };

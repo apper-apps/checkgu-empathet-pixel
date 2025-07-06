@@ -262,18 +262,18 @@ return colors[subject] || "bg-gray-100 text-gray-800 border-gray-200"
               )
             })}
           </React.Fragment>
-        ))}
+))}
       </div>
-</div>
 
-      {/* Debug information (only in development) */}
-      {(typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') && (
+{/* Debug information (only in development) */}
+      {(typeof window !== 'undefined' && window.location?.hostname === 'localhost') && (
         <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
           Grid dimensions: {dimensions.width}x{dimensions.height} | 
           Timetable entries: {timetable.length} | 
           Export ready: {dimensions.width > 0 && dimensions.height > 0 ? 'Yes' : 'No'}
         </div>
       )}
+    </div>
   )
 }
 

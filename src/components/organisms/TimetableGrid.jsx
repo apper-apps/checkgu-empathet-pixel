@@ -18,6 +18,7 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [error, setError] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const gridRef = useRef(null)
+  const resizeObserverRef = useRef(null)
   const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00']
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -86,37 +87,40 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
     }
   }
 
-  useEffect(() => {
+useEffect(() => {
     const handleResize = () => {
       updateDimensionsAndReadiness()
     }
 
     const initializeGrid = () => {
+      if (!gridRef.current) {
+        setIsLoading(false)
+        return
+      }
+
       try {
-        if (gridRef.current) {
-          // Multiple checks to ensure DOM is ready
-          const checkAndUpdate = () => {
-            updateDimensionsAndReadiness()
-            setIsLoading(false)
-            setError(null)
-          }
-          
-          // Progressive checks for DOM readiness
-          requestAnimationFrame(() => {
-            setTimeout(checkAndUpdate, 100)
-          })
+        const rect = gridRef.current.getBoundingClientRect()
+        const validation = validateDimensions(rect)
+        
+        if (validation.isValid) {
+          setDimensions({ width: rect.width, height: rect.height })
+          setIsExportReady(true)
+          setIsVisible(true)
+          setIsLoading(false)
+          setError(null)
+        } else {
+          setError('Grid dimensions are invalid')
+          setIsLoading(false)
         }
       } catch (err) {
-        console.error('TimetableGrid initialization error:', err)
-        setError(err.message)
+        console.error('Error initializing grid:', err)
+        setError('Failed to initialize grid')
         setIsLoading(false)
-        setIsExportReady(false)
       }
     }
 
-    // Initialize with multiple fallback timers
-    const timer1 = setTimeout(initializeGrid, 100)
-    const timer2 = setTimeout(initializeGrid, 500)
+    // Single reliable initialization
+    const timer = setTimeout(initializeGrid, 100)
     
     // Add resize listener with debouncing
     let resizeTimeout
@@ -128,8 +132,7 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
     window.addEventListener('resize', debouncedResize)
     
     return () => {
-      clearTimeout(timer1)
-      clearTimeout(timer2)
+      clearTimeout(timer)
       clearTimeout(resizeTimeout)
       window.removeEventListener('resize', debouncedResize)
     }
@@ -138,7 +141,7 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   // Update dimensions when timetable data changes
 // Update dimensions when timetable data changes
   useEffect(() => {
-    if (gridRef.current && timetable.length > 0) {
+    if (gridRef.current && timetable && timetable.length > 0) {
       try {
         // Wait for re-render after data change
         requestAnimationFrame(() => {
@@ -153,6 +156,30 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
     }
   }, [timetable])
 
+  // Setup ResizeObserver for reliable dimension tracking
+  useEffect(() => {
+    if (gridRef.current && !resizeObserverRef.current) {
+      resizeObserverRef.current = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect
+          if (width >= 50 && height >= 50) {
+            setDimensions({ width, height })
+            setIsExportReady(true)
+            setIsVisible(true)
+          }
+        }
+      })
+      resizeObserverRef.current.observe(gridRef.current)
+    }
+
+    return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect()
+        resizeObserverRef.current = null
+      }
+    }
+  }, [])
+
   // Expose export readiness for parent components
   useEffect(() => {
     if (gridRef.current) {
@@ -160,9 +187,9 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
       gridRef.current.dataset.isVisible = isVisible ? 'true' : 'false'
     }
   }, [isExportReady, isVisible])
-
-  const getClassForSlot = (day, time) => {
+const getClassForSlot = (day, time) => {
     try {
+      if (!timetable || !Array.isArray(timetable)) return null
       return timetable.find(item => 
         item?.day?.toLowerCase() === day.toLowerCase() && 
         item?.time === time
@@ -173,10 +200,12 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
     }
   }
 
-  const getLessonPlanForSlot = (day, time) => {
+const getLessonPlanForSlot = (day, time) => {
     try {
       const classData = getClassForSlot(day, time)
       if (!classData) return null
+      
+      if (!lessonPlans || !Array.isArray(lessonPlans)) return null
       
       return lessonPlans.find(plan => 
         plan?.subject === classData.subject && 
@@ -188,9 +217,9 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
     }
   }
 
-  const getSubjectColor = (subject) => {
+const getSubjectColor = (subject) => {
     try {
-return colors[subject] || "bg-gray-100 text-gray-800 border-gray-200"
+      return colors[subject] || "bg-gray-100 text-gray-800 border-gray-200"
     } catch (err) {
       console.error('Error getting subject color:', err)
       return "bg-gray-100 text-gray-800 border-gray-200"
@@ -238,6 +267,7 @@ return (
       {/* Grid container with proper ID for export functionality */}
       <div 
         ref={gridRef}
+        id="timetable-grid"
         className="timetable-grid mb-4"
         style={{ 
           minWidth: '800px',
@@ -246,7 +276,8 @@ return (
           gridTemplateColumns: '100px repeat(5, 1fr)',
           gap: '1px'
         }}
-        data-export-ready={dimensions.width > 0 && dimensions.height > 0}
+        data-export-ready={dimensions.width >= 50 && dimensions.height >= 50}
+        data-is-visible={isVisible}
         data-dimensions={`${dimensions.width}x${dimensions.height}`}
       >
         {/* Header */}

@@ -49,6 +49,7 @@ const validateElementForCapture = (element) => {
 }
 
 // Wait for element to be ready for export
+// Wait for element to be ready for export
 const waitForElementReady = async (element, timeout = 5000) => {
   return new Promise((resolve, reject) => {
     const startTime = Date.now()
@@ -57,18 +58,33 @@ const waitForElementReady = async (element, timeout = 5000) => {
       try {
         const validation = validateElementForCapture(element)
         
-        // Check for export readiness attribute if available
+        // Enhanced checks for TimetableGrid readiness
         const exportReady = element.dataset?.exportReady === 'true'
         const isVisible = element.dataset?.isVisible === 'true'
+        const dimensions = element.dataset?.dimensions
         
-        if (validation.isValid && (exportReady || isVisible)) {
+        // Parse dimensions if available
+        let hasSufficientDimensions = false
+        if (dimensions) {
+          const [width, height] = dimensions.split('x').map(Number)
+          hasSufficientDimensions = width >= 50 && height >= 50
+        }
+        
+        // Element must be valid AND have proper export readiness
+        if (validation.isValid && exportReady && isVisible && hasSufficientDimensions) {
+          console.log('Element ready for export:', { 
+            dimensions: validation.dimensions, 
+            exportReady, 
+            isVisible,
+            hasSufficientDimensions
+          })
           resolve(validation)
           return
         }
         
         // Timeout check
         if (Date.now() - startTime > timeout) {
-          reject(new Error(`Element not ready for export after ${timeout}ms`))
+          reject(new Error(`Element not ready for export after ${timeout}ms. Status: exportReady=${exportReady}, isVisible=${isVisible}, dimensions=${dimensions}`))
           return
         }
         
@@ -85,8 +101,9 @@ const waitForElementReady = async (element, timeout = 5000) => {
     
     checkReady()
   })
+})
 }
-
+// Enhanced viewport capture with comprehensive validation
 // Enhanced viewport capture with comprehensive validation
 export const captureViewport = async (element, options = {}) => {
   try {
@@ -96,11 +113,24 @@ export const captureViewport = async (element, options = {}) => {
     const validation = await waitForElementReady(element, options.timeout || 5000)
     console.log('Element validation passed:', validation)
 
-    // Additional pre-capture checks
+    // Additional pre-capture checks with enhanced validation
     const rect = element.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) {
       throw new Error(`Canvas capture failed: Element has zero dimensions (${rect.width}x${rect.height})`)
     }
+
+    // Ensure minimum dimensions for canvas operations
+    if (rect.width < 50 || rect.height < 50) {
+      throw new Error(`Canvas capture failed: Element dimensions too small (${rect.width}x${rect.height}). Minimum 50x50 required.`)
+    }
+
+    // Pre-flight check for html2canvas compatibility
+    const computedStyle = window.getComputedStyle(element)
+    if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+      throw new Error('Canvas capture failed: Element is not visible')
+    }
+
+    console.log('Pre-capture validation passed. Capturing element with dimensions:', rect.width, 'x', rect.height)
 
     const canvas = await html2canvas(element, {
       useCORS: true,
@@ -115,11 +145,17 @@ export const captureViewport = async (element, options = {}) => {
       ...options
     })
 
-    // Validate canvas output
+    // Validate canvas output with enhanced checks
     if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
       throw new Error(`Canvas generation failed: Invalid canvas dimensions (${canvas?.width || 0}x${canvas?.height || 0})`)
     }
-console.log('Canvas capture successful:', canvas.width, 'x', canvas.height)
+
+    // Additional canvas validation
+    if (canvas.width < 50 || canvas.height < 50) {
+      throw new Error(`Canvas generation failed: Generated canvas too small (${canvas.width}x${canvas.height})`)
+    }
+
+    console.log('Canvas capture successful:', canvas.width, 'x', canvas.height)
     return canvas
   } catch (error) {
     console.error('Error capturing viewport:', error)
@@ -134,23 +170,39 @@ console.log('Canvas capture successful:', canvas.width, 'x', canvas.height)
         visibility: window.getComputedStyle(element).visibility,
         opacity: window.getComputedStyle(element).opacity
       } : null,
+      elementDataAttributes: element ? {
+        exportReady: element.dataset?.exportReady,
+        isVisible: element.dataset?.isVisible,
+        dimensions: element.dataset?.dimensions
+      } : null,
       timestamp: new Date().toISOString()
     }
     
     console.error('Capture error details:', errorDetails)
     throw new Error(`Failed to capture viewport: ${error.message}`)
+throw new Error(`Failed to capture viewport: ${error.message}`)
   }
 }
-
+// Export timetable to PDF with enhanced error handling
 // Export timetable to PDF with enhanced error handling
 export const exportToPDF = async (element, filename = 'timetable.pdf') => {
   try {
     console.log('Starting PDF export...')
+    
+    // Enhanced pre-flight checks
+    if (!element) {
+      throw new Error('Element is required for PDF export')
+    }
+
+    // Wait for element to be export-ready
+    console.log('Waiting for element to be ready for export...')
     const canvas = await captureViewport(element, { timeout: 10000 })
     
     if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
       throw new Error('Invalid canvas for PDF generation')
     }
+
+    console.log('Canvas ready for PDF generation:', canvas.width, 'x', canvas.height)
 
     const pdf = new jsPDF({
       orientation: 'landscape',
@@ -190,7 +242,7 @@ export const exportToPDF = async (element, filename = 'timetable.pdf') => {
   } catch (error) {
     console.error('Error exporting PDF:', error)
     throw new Error(`Failed to export PDF: ${error.message}`)
-  }
+}
 }
 
 // Export timetable to PNG with validation

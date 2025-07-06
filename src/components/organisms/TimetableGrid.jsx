@@ -12,7 +12,7 @@ function TimetableGrid({
   className = '',
   exportMode = false 
 }) {
-const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [isExportReady, setIsExportReady] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
   const [error, setError] = useState(null)
@@ -64,130 +64,127 @@ const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
     )
   }
 
-  const updateDimensionsAndReadiness = () => {
-    if (!gridRef.current) return
-    
-    try {
-      const rect = gridRef.current.getBoundingClientRect()
-      const validation = validateDimensions(rect)
-      const visible = checkVisibility()
-      
-      setIsVisible(visible)
-      
-      if (validation.isValid && visible) {
-        setDimensions({ width: validation.width, height: validation.height })
-        setIsExportReady(true)
-      } else {
-        setIsExportReady(false)
-      }
-    } catch (err) {
-      console.error('Error updating grid dimensions:', err)
-      setIsExportReady(false)
-      setDimensions({ width: 800, height: 600 })
-    }
-  }
-
-useEffect(() => {
-    const handleResize = () => {
-      updateDimensionsAndReadiness()
-    }
-
-    const initializeGrid = () => {
+// Consolidated initialization and dimension management
+  useEffect(() => {
+    const initializeGrid = async () => {
       if (!gridRef.current) {
         setIsLoading(false)
+        setError('Grid element not found')
         return
       }
 
       try {
+        // Wait for element to be properly rendered
+        await new Promise(resolve => {
+          const checkRendered = () => {
+            if (!gridRef.current) return
+            const rect = gridRef.current.getBoundingClientRect()
+            if (rect.width > 0 && rect.height > 0) {
+              resolve()
+            } else {
+              setTimeout(checkRendered, 50)
+            }
+          }
+          checkRendered()
+        })
+
         const rect = gridRef.current.getBoundingClientRect()
         const validation = validateDimensions(rect)
+        const visible = checkVisibility()
         
-        if (validation.isValid) {
-          setDimensions({ width: rect.width, height: rect.height })
+        if (validation.isValid && visible) {
+          setDimensions({ width: validation.width, height: validation.height })
           setIsExportReady(true)
           setIsVisible(true)
-          setIsLoading(false)
           setError(null)
         } else {
-          setError('Grid dimensions are invalid')
-          setIsLoading(false)
+          setError('Grid is not ready for export')
+          setIsExportReady(false)
         }
       } catch (err) {
         console.error('Error initializing grid:', err)
-        setError('Failed to initialize grid')
+        setError('Failed to initialize grid: ' + err.message)
+        setIsExportReady(false)
+        setDimensions({ width: 800, height: 600 })
+      } finally {
         setIsLoading(false)
       }
     }
 
-    // Single reliable initialization
+    // Initialize after component mount
     const timer = setTimeout(initializeGrid, 100)
     
-    // Add resize listener with debouncing
+    // Handle window resize with debouncing
     let resizeTimeout
-    const debouncedResize = () => {
+    const handleResize = () => {
       clearTimeout(resizeTimeout)
-      resizeTimeout = setTimeout(handleResize, 100)
+      resizeTimeout = setTimeout(() => {
+        if (gridRef.current) {
+          const rect = gridRef.current.getBoundingClientRect()
+          const validation = validateDimensions(rect)
+          const visible = checkVisibility()
+          
+          if (validation.isValid && visible) {
+            setDimensions({ width: validation.width, height: validation.height })
+            setIsExportReady(true)
+            setIsVisible(true)
+          } else {
+            setIsExportReady(false)
+          }
+        }
+      }, 200)
     }
     
-    window.addEventListener('resize', debouncedResize)
+    window.addEventListener('resize', handleResize)
     
     return () => {
       clearTimeout(timer)
       clearTimeout(resizeTimeout)
-      window.removeEventListener('resize', debouncedResize)
+      window.removeEventListener('resize', handleResize)
     }
   }, [])
-
-  // Update dimensions when timetable data changes
 // Update dimensions when timetable data changes
   useEffect(() => {
     if (gridRef.current && timetable && timetable.length > 0) {
-      try {
-        // Wait for re-render after data change
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            updateDimensionsAndReadiness()
-          }, 150)
-        })
-      } catch (err) {
-        console.error('Error updating grid dimensions:', err)
-        setIsExportReady(false)
-      }
-    }
-  }, [timetable])
-
-  // Setup ResizeObserver for reliable dimension tracking
-  useEffect(() => {
-    if (gridRef.current && !resizeObserverRef.current) {
-      resizeObserverRef.current = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const { width, height } = entry.contentRect
-          if (width >= 50 && height >= 50) {
-            setDimensions({ width, height })
+      const updateAfterDataChange = () => {
+        if (!gridRef.current) return
+        
+        try {
+          const rect = gridRef.current.getBoundingClientRect()
+          const validation = validateDimensions(rect)
+          const visible = checkVisibility()
+          
+          if (validation.isValid && visible) {
+            setDimensions({ width: validation.width, height: validation.height })
             setIsExportReady(true)
             setIsVisible(true)
           }
+        } catch (err) {
+          console.error('Error updating grid after data change:', err)
+          setIsExportReady(false)
         }
-      })
-      resizeObserverRef.current.observe(gridRef.current)
-    }
-
-    return () => {
-      if (resizeObserverRef.current) {
-        resizeObserverRef.current.disconnect()
-        resizeObserverRef.current = null
       }
+      
+      // Wait for DOM to update after data change
+      requestAnimationFrame(() => {
+        setTimeout(updateAfterDataChange, 100)
+      })
     }
-  }, [])
+  }, [timetable])
 
-  // Expose export readiness for parent components
+  // Update dimensions when timetable data changes
+// Update dimensions when timetable data changes
+// Expose export readiness for parent components
   useEffect(() => {
     if (gridRef.current) {
       gridRef.current.dataset.exportReady = isExportReady ? 'true' : 'false'
       gridRef.current.dataset.isVisible = isVisible ? 'true' : 'false'
+      gridRef.current.dataset.dimensions = `${dimensions.width}x${dimensions.height}`
     }
-  }, [isExportReady, isVisible])
-const getClassForSlot = (day, time) => {
+  }, [isExportReady, isVisible, dimensions])
+
+  const getClassForSlot = (day, time) => {
+
     try {
       if (!timetable || !Array.isArray(timetable)) return null
       return timetable.find(item => 
@@ -269,14 +266,14 @@ return (
         ref={gridRef}
         id="timetable-grid"
         className="timetable-grid mb-4"
-        style={{ 
+style={{ 
           minWidth: '800px',
           minHeight: '400px',
           display: 'grid',
           gridTemplateColumns: '100px repeat(5, 1fr)',
           gap: '1px'
         }}
-        data-export-ready={dimensions.width >= 50 && dimensions.height >= 50}
+        data-export-ready={isExportReady && dimensions.width >= 50 && dimensions.height >= 50}
         data-is-visible={isVisible}
         data-dimensions={`${dimensions.width}x${dimensions.height}`}
       >

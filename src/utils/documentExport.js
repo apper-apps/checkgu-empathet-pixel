@@ -1,6 +1,8 @@
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
+import React from "react";
+import Error from "@/components/ui/Error";
 // Enhanced element validation for canvas operations
 const validateElementForCapture = (element) => {
   if (!element) {
@@ -104,14 +106,25 @@ export const captureViewport = async (element, options = {}) => {
   try {
     console.log('Starting viewport capture...')
     
-    // Wait for element to be ready
-    const validation = await waitForElementReady(element, options.timeout || 5000)
+    // Enhanced element validation
+    if (!element) {
+      throw new Error('Canvas capture failed: No element provided')
+    }
+    
+    if (!element.isConnected) {
+      throw new Error('Canvas capture failed: Element is not connected to DOM')
+    }
+    
+    // Wait for element to be ready with comprehensive validation
+    const validation = await waitForElementReady(element, options.timeout || 10000)
     console.log('Element validation passed:', validation)
 
-    // Additional pre-capture checks with enhanced validation
+    // Multiple rounds of dimension validation
     const rect = element.getBoundingClientRect()
-    if (rect.width <= 0 || rect.height <= 0) {
-      throw new Error(`Canvas capture failed: Element has zero dimensions (${rect.width}x${rect.height})`)
+    console.log('Element dimensions:', rect)
+    
+    if (!rect || rect.width <= 0 || rect.height <= 0) {
+      throw new Error(`Canvas capture failed: Element has zero dimensions (${rect?.width || 0}x${rect?.height || 0})`)
     }
 
     // Ensure minimum dimensions for canvas operations
@@ -119,35 +132,68 @@ export const captureViewport = async (element, options = {}) => {
       throw new Error(`Canvas capture failed: Element dimensions too small (${rect.width}x${rect.height}). Minimum 50x50 required.`)
     }
 
-    // Pre-flight check for html2canvas compatibility
+    // Enhanced visibility checks
     const computedStyle = window.getComputedStyle(element)
     if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
       throw new Error('Canvas capture failed: Element is not visible')
     }
+    
+    if (parseFloat(computedStyle.opacity) === 0) {
+      throw new Error('Canvas capture failed: Element has zero opacity')
+    }
+
+    // Check element readiness via data attributes
+    const isReady = element.dataset?.exportReady === 'true'
+    const isVisible = element.dataset?.isVisible === 'true'
+    
+    if (!isReady || !isVisible) {
+      throw new Error(`Canvas capture failed: Element not ready for export (ready: ${isReady}, visible: ${isVisible})`)
+    }
 
     console.log('Pre-capture validation passed. Capturing element with dimensions:', rect.width, 'x', rect.height)
 
+    // Enhanced canvas generation with error handling
     const canvas = await html2canvas(element, {
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       scale: Math.min(2, window.devicePixelRatio || 1),
       logging: false,
-      width: rect.width,
-      height: rect.height,
-      windowWidth: rect.width,
-      windowHeight: rect.height,
+      width: Math.floor(rect.width),
+      height: Math.floor(rect.height),
+      windowWidth: Math.floor(rect.width),
+      windowHeight: Math.floor(rect.height),
+      onclone: (clonedDoc) => {
+        // Ensure cloned document has proper dimensions
+        const clonedElement = clonedDoc.querySelector(`#${element.id}`)
+        if (clonedElement) {
+          clonedElement.style.width = `${rect.width}px`
+          clonedElement.style.height = `${rect.height}px`
+          clonedElement.style.minWidth = `${rect.width}px`
+          clonedElement.style.minHeight = `${rect.height}px`
+        }
+      },
       ...options
     })
 
-    // Validate canvas output with enhanced checks
-    if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
-      throw new Error(`Canvas generation failed: Invalid canvas dimensions (${canvas?.width || 0}x${canvas?.height || 0})`)
+    // Comprehensive canvas validation
+    if (!canvas) {
+      throw new Error('Canvas generation failed: html2canvas returned null')
+    }
+    
+    if (canvas.width <= 0 || canvas.height <= 0) {
+      throw new Error(`Canvas generation failed: Invalid canvas dimensions (${canvas.width}x${canvas.height})`)
     }
 
     // Additional canvas validation
     if (canvas.width < 50 || canvas.height < 50) {
       throw new Error(`Canvas generation failed: Generated canvas too small (${canvas.width}x${canvas.height})`)
+    }
+
+    // Test canvas context
+    const context = canvas.getContext('2d')
+    if (!context) {
+      throw new Error('Canvas generation failed: Could not get 2D context')
     }
 
     console.log('Canvas capture successful:', canvas.width, 'x', canvas.height)
@@ -159,6 +205,7 @@ export const captureViewport = async (element, options = {}) => {
     const errorDetails = {
       message: error.message,
       elementPresent: !!element,
+      elementConnected: element?.isConnected,
       elementDimensions: element ? element.getBoundingClientRect() : null,
       elementStyle: element ? {
         display: window.getComputedStyle(element).display,
@@ -174,7 +221,7 @@ export const captureViewport = async (element, options = {}) => {
     }
     
     console.error('Capture error details:', errorDetails)
-throw new Error(`Failed to capture viewport: ${error.message}`)
+    throw new Error(`Failed to capture viewport: ${error.message}`)
   }
 }
 
@@ -267,21 +314,40 @@ export const exportToPNG = async (element, filename = 'timetable.png') => {
   }
 }
 
-// Wait for element to render completely
-const waitForElementToRender = async (element, timeout = 5000) => {
+// Enhanced element readiness validation
+const waitForElementToRender = async (element, timeout = 10000) => {
   return new Promise((resolve, reject) => {
     const startTime = Date.now()
     
     const checkReady = () => {
       try {
-        const rect = element.getBoundingClientRect()
-        if (rect.width > 0 && rect.height > 0) {
-          resolve(true)
+        if (!element || !element.isConnected) {
+          reject(new Error('Element not found or not connected to DOM'))
           return
         }
         
+        const rect = element.getBoundingClientRect()
+        const computedStyle = window.getComputedStyle(element)
+        
+        // Check dimensions
+        if (rect.width > 50 && rect.height > 50) {
+          // Check visibility
+          if (computedStyle.display !== 'none' && 
+              computedStyle.visibility !== 'hidden' && 
+              parseFloat(computedStyle.opacity) > 0) {
+            // Check element readiness via data attributes
+            const isReady = element.dataset?.exportReady === 'true'
+            const isVisible = element.dataset?.isVisible === 'true'
+            
+            if (isReady && isVisible) {
+              resolve(true)
+              return
+            }
+          }
+        }
+        
         if (Date.now() - startTime > timeout) {
-          reject(new Error(`Element not ready after ${timeout}ms`))
+          reject(new Error(`Element not ready after ${timeout}ms. Dimensions: ${rect.width}x${rect.height}, Ready: ${element.dataset?.exportReady}, Visible: ${element.dataset?.isVisible}`))
           return
         }
         
@@ -295,21 +361,30 @@ const waitForElementToRender = async (element, timeout = 5000) => {
   })
 }
 
-// Capture element to canvas
+// Enhanced canvas capture with comprehensive validation
 const captureElementToCanvas = async (element) => {
   try {
     await waitForElementToRender(element)
     
+    const rect = element.getBoundingClientRect()
     const canvas = await html2canvas(element, {
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
-      scale: 2,
-      logging: false
+      scale: Math.min(2, window.devicePixelRatio || 1),
+      logging: false,
+      width: Math.floor(rect.width),
+      height: Math.floor(rect.height),
+      windowWidth: Math.floor(rect.width),
+      windowHeight: Math.floor(rect.height)
     })
     
     if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
-      throw new Error('Failed to generate canvas')
+      throw new Error(`Failed to generate canvas: ${canvas?.width || 0}x${canvas?.height || 0}`)
+    }
+    
+    if (canvas.width < 50 || canvas.height < 50) {
+      throw new Error(`Generated canvas too small: ${canvas.width}x${canvas.height}`)
     }
     
     return canvas
@@ -321,6 +396,8 @@ const captureElementToCanvas = async (element) => {
 
 // Export timetable to PDF (alternative implementation)
 export const exportTimetableToPDF = async (elementId = 'timetable-grid') => {
+  let loadingToast = null
+  
   try {
     const element = document.getElementById(elementId)
     if (!element) {
@@ -328,46 +405,96 @@ export const exportTimetableToPDF = async (elementId = 'timetable-grid') => {
     }
     
     // Show loading notification
-    const loadingToast = document.createElement('div')
+    loadingToast = document.createElement('div')
     loadingToast.textContent = 'Generating PDF...'
     loadingToast.style.cssText = 'position:fixed;top:20px;right:20px;background:#3b82f6;color:white;padding:12px 16px;border-radius:8px;z-index:9999;'
     document.body.appendChild(loadingToast)
     
-    try {
-      const canvas = await captureElementToCanvas(element)
-      const imgData = canvas.toDataURL('image/png')
-      
-      // Create PDF with proper dimensions
-      const pdf = new jsPDF({
-        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      })
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
-      pdf.save(`timetable-${new Date().toISOString().split('T')[0]}.pdf`)
-      
-      // Success notification
-      loadingToast.textContent = 'PDF exported successfully!'
-      loadingToast.style.background = '#10b981'
-      setTimeout(() => {
-        if (document.body.contains(loadingToast)) {
-          document.body.removeChild(loadingToast)
-        }
-      }, 2000)
-      
-    } catch (captureError) {
-      throw captureError
-    } finally {
-      if (document.body.contains(loadingToast)) {
+    // Enhanced element validation
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) {
+      throw new Error(`Element not ready for export: ${rect.width}x${rect.height}`)
+    }
+    
+    if (element.dataset?.exportReady !== 'true') {
+      throw new Error('Element not ready for export. Please wait for the timetable to load completely.')
+    }
+    
+    const canvas = await captureElementToCanvas(element)
+    const imgData = canvas.toDataURL('image/png', 1.0)
+    
+    // Create PDF with proper dimensions
+    const pdf = new jsPDF({
+      orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+      unit: 'px',
+      format: [canvas.width, canvas.height]
+    })
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
+    pdf.save(`timetable-${new Date().toISOString().split('T')[0]}.pdf`)
+    
+    // Success notification
+    loadingToast.textContent = 'PDF exported successfully!'
+    loadingToast.style.background = '#10b981'
+    setTimeout(() => {
+      if (loadingToast && document.body.contains(loadingToast)) {
         document.body.removeChild(loadingToast)
       }
-    }
+    }, 2000)
     
   } catch (error) {
     console.error('PDF export error:', error)
     
+    // Remove loading toast if it exists
+    if (loadingToast && document.body.contains(loadingToast)) {
+      document.body.removeChild(loadingToast)
+    }
+    
     // Error notification
+    const errorToast = document.createElement('div')
+    errorToast.textContent = `Export failed: ${error.message}`
+    errorToast.style.cssText = 'position:fixed;top:20px;right:20px;background:#ef4444;color:white;padding:12px 16px;border-radius:8px;z-index:9999;'
+    document.body.appendChild(errorToast)
+    setTimeout(() => {
+      if (document.body.contains(errorToast)) {
+        document.body.removeChild(errorToast)
+      }
+    }, 5000)
+    
+throw error
+  }
+}
+
+// Export timetable as image
+// Print timetable
+export const exportTimetableToImage = async (elementId = 'timetable-grid', format = 'png') => {
+  try {
+    const element = document.getElementById(elementId)
+    if (!element) {
+      throw new Error(`Element with ID '${elementId}' not found`)
+    }
+    
+    // Enhanced element validation
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) {
+      throw new Error(`Element not ready for export: ${rect.width}x${rect.height}`)
+    }
+    
+    if (element.dataset?.exportReady !== 'true') {
+      throw new Error('Element not ready for export. Please wait for the timetable to load completely.')
+    }
+    
+    const canvas = await captureElementToCanvas(element)
+    const link = document.createElement('a')
+    link.download = `timetable-${new Date().toISOString().split('T')[0]}.${format}`
+    link.href = canvas.toDataURL(`image/${format}`, 1.0)
+    link.click()
+    
+    return canvas
+  } catch (error) {
+    console.error('Image export error:', error)
+    
+    // Show error notification
     const errorToast = document.createElement('div')
     errorToast.textContent = `Export failed: ${error.message}`
     errorToast.style.cssText = 'position:fixed;top:20px;right:20px;background:#ef4444;color:white;padding:12px 16px;border-radius:8px;z-index:9999;'
@@ -381,42 +508,33 @@ export const exportTimetableToPDF = async (elementId = 'timetable-grid') => {
     throw error
   }
 }
-
-// Export timetable as image
-export const exportTimetableToImage = async (elementId = 'timetable-grid', format = 'png') => {
-  try {
-    const element = document.getElementById(elementId);
-    if (!element) {
-      throw new Error(`Element with ID '${elementId}' not found`);
-    }
-    
-    const canvas = await captureElementToCanvas(element);
-    const link = document.createElement('a');
-    link.download = `timetable-${new Date().toISOString().split('T')[0]}.${format}`;
-    link.href = canvas.toDataURL(`image/${format}`);
-    link.click();
-    
-    return canvas;
-  } catch (error) {
-    console.error('Image export error:', error);
-    throw error;
-  }
-};
-
-// Print timetable
 export const printTimetable = async (elementId = 'timetable-grid') => {
   try {
-    const element = document.getElementById(elementId);
+    const element = document.getElementById(elementId)
     if (!element) {
-      throw new Error(`Element with ID '${elementId}' not found`);
+      throw new Error(`Element with ID '${elementId}' not found`)
     }
     
-    await waitForElementToRender(element);
+    // Enhanced element validation
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) {
+      throw new Error(`Element not ready for export: ${rect.width}x${rect.height}`)
+    }
     
-    const canvas = await captureElementToCanvas(element);
-    const imgData = canvas.toDataURL('image/png');
+    if (element.dataset?.exportReady !== 'true') {
+      throw new Error('Element not ready for export. Please wait for the timetable to load completely.')
+    }
     
-    const printWindow = window.open('', '_blank');
+    await waitForElementToRender(element)
+    
+    const canvas = await captureElementToCanvas(element)
+    const imgData = canvas.toDataURL('image/png', 1.0)
+    
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      throw new Error('Failed to open print window. Please check if popups are blocked.')
+    }
+    
     printWindow.document.write(`
       <html>
         <head>
@@ -434,18 +552,30 @@ export const printTimetable = async (elementId = 'timetable-grid') => {
           <img src="${imgData}" alt="Timetable" />
         </body>
       </html>
-    `);
+    `)
     
-    printWindow.document.close();
+    printWindow.document.close()
     printWindow.onload = () => {
-      printWindow.print();
-      printWindow.close();
-    };
+      printWindow.print()
+      printWindow.close()
+    }
   } catch (error) {
-    console.error('Print error:', error);
-    throw error;
+    console.error('Print error:', error)
+    
+    // Show error notification
+    const errorToast = document.createElement('div')
+    errorToast.textContent = `Print failed: ${error.message}`
+    errorToast.style.cssText = 'position:fixed;top:20px;right:20px;background:#ef4444;color:white;padding:12px 16px;border-radius:8px;z-index:9999;'
+    document.body.appendChild(errorToast)
+    setTimeout(() => {
+      if (document.body.contains(errorToast)) {
+        document.body.removeChild(errorToast)
+      }
+    }, 5000)
+    
+    throw error
   }
-};
+}
 
 // Export lesson plan as PDF
 export const exportLessonPlanToPDF = async (lessonPlan) => {

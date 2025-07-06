@@ -1,239 +1,193 @@
-import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
-import { jsPDF } from "jspdf";
-import { format } from "date-fns";
-export const exportToPDF = (lessonPlan) => {
-  const doc = new jsPDF();
-  const margin = 20;
-  const pageWidth = doc.internal.pageSize.width;
-  const pageHeight = doc.internal.pageSize.height;
-  let yPosition = margin;
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import React from "react";
+import Error from "@/components/ui/Error";
 
-  // Helper function to add text with word wrapping
-  const addText = (text, fontSize = 12, isBold = false) => {
-    doc.setFontSize(fontSize);
-    doc.setFont("helvetica", isBold ? "bold" : "normal");
+// Utility function to wait for element to be properly rendered
+const waitForElementToRender = (element, timeout = 5000) => {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
     
-    const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
+    const checkElement = () => {
+      if (!element) {
+        reject(new Error('Element not found'));
+        return;
+      }
+      
+      const rect = element.getBoundingClientRect();
+      const hasValidDimensions = rect.width > 0 && rect.height > 0;
+      const isVisible = rect.width > 0 && rect.height > 0 && 
+                       window.getComputedStyle(element).display !== 'none' &&
+                       window.getComputedStyle(element).visibility !== 'hidden';
+      
+      if (hasValidDimensions && isVisible) {
+        resolve(element);
+      } else if (Date.now() - startTime > timeout) {
+        reject(new Error(`Element did not render within ${timeout}ms. Dimensions: ${rect.width}x${rect.height}`));
+      } else {
+        setTimeout(checkElement, 100);
+      }
+    };
     
-    // Check if we need a new page
-    if (yPosition + lines.length * fontSize * 0.4 > pageHeight - margin) {
-      doc.addPage();
-      yPosition = margin;
-    }
-    
-    doc.text(lines, margin, yPosition);
-    yPosition += lines.length * fontSize * 0.4 + 5;
-  };
-
-  // Title
-  addText("LESSON PLAN", 20, true);
-  yPosition += 10;
-
-  // Basic Information
-  addText(`Filename: ${lessonPlan.filename}`, 14, true);
-  addText(`Subject: ${lessonPlan.subject}`, 12);
-  addText(`Class: ${lessonPlan.class}`, 12);
-  addText(`Duration: ${lessonPlan.duration} minutes`, 12);
-  addText(`Date: ${format(new Date(lessonPlan.date), 'MMMM dd, yyyy')}`, 12);
-  yPosition += 10;
-
-  // Content sections
-  if (lessonPlan.objectives) {
-    addText("LEARNING OBJECTIVES", 14, true);
-    addText(lessonPlan.objectives, 12);
-    yPosition += 5;
-  }
-
-  if (lessonPlan.materials) {
-    addText("MATERIALS NEEDED", 14, true);
-    addText(lessonPlan.materials, 12);
-    yPosition += 5;
-  }
-
-  if (lessonPlan.activities) {
-    addText("ACTIVITIES & PROCEDURES", 14, true);
-    addText(lessonPlan.activities, 12);
-    yPosition += 5;
-  }
-
-  if (lessonPlan.assessment) {
-    addText("ASSESSMENT METHODS", 14, true);
-    addText(lessonPlan.assessment, 12);
-    yPosition += 5;
-  }
-
-  if (lessonPlan.homework) {
-    addText("HOMEWORK ASSIGNMENT", 14, true);
-    addText(lessonPlan.homework, 12);
-    yPosition += 5;
-  }
-
-  if (lessonPlan.notes) {
-    addText("ADDITIONAL NOTES", 14, true);
-    addText(lessonPlan.notes, 12);
-  }
-
-  // Save the PDF
-  doc.save(`${lessonPlan.filename}.pdf`);
+    checkElement();
+  });
 };
 
-export const exportToDOCX = async (lessonPlan) => {
-  const doc = new Document({
-    sections: [{
-      properties: {},
-      children: [
-        new Paragraph({
-          text: "LESSON PLAN",
-          heading: HeadingLevel.HEADING_1,
-          alignment: AlignmentType.CENTER,
-        }),
-        new Paragraph({
-          text: "",
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "Filename: ",
-              bold: true,
-            }),
-            new TextRun({
-              text: lessonPlan.filename,
-            }),
-          ],
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "Subject: ",
-              bold: true,
-            }),
-            new TextRun({
-              text: lessonPlan.subject,
-            }),
-          ],
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "Class: ",
-              bold: true,
-            }),
-            new TextRun({
-              text: lessonPlan.class,
-            }),
-          ],
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "Duration: ",
-              bold: true,
-            }),
-            new TextRun({
-              text: `${lessonPlan.duration} minutes`,
-            }),
-          ],
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: "Date: ",
-              bold: true,
-            }),
-            new TextRun({
-              text: format(new Date(lessonPlan.date), 'MMMM dd, yyyy'),
-            }),
-          ],
-        }),
-        new Paragraph({
-          text: "",
-        }),
-        ...(lessonPlan.objectives ? [
-          new Paragraph({
-            text: "LEARNING OBJECTIVES",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          new Paragraph({
-            text: lessonPlan.objectives,
-          }),
-          new Paragraph({
-            text: "",
-          }),
-        ] : []),
-        ...(lessonPlan.materials ? [
-          new Paragraph({
-            text: "MATERIALS NEEDED",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          new Paragraph({
-            text: lessonPlan.materials,
-          }),
-          new Paragraph({
-            text: "",
-          }),
-        ] : []),
-        ...(lessonPlan.activities ? [
-          new Paragraph({
-            text: "ACTIVITIES & PROCEDURES",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          new Paragraph({
-            text: lessonPlan.activities,
-          }),
-          new Paragraph({
-            text: "",
-          }),
-        ] : []),
-        ...(lessonPlan.assessment ? [
-          new Paragraph({
-            text: "ASSESSMENT METHODS",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          new Paragraph({
-            text: lessonPlan.assessment,
-          }),
-          new Paragraph({
-            text: "",
-          }),
-        ] : []),
-        ...(lessonPlan.homework ? [
-          new Paragraph({
-            text: "HOMEWORK ASSIGNMENT",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          new Paragraph({
-            text: lessonPlan.homework,
-          }),
-          new Paragraph({
-            text: "",
-          }),
-        ] : []),
-...(lessonPlan.notes ? [
-          new Paragraph({
-            text: "ADDITIONAL NOTES",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          new Paragraph({
-            text: lessonPlan.notes,
-          }),
-          new Paragraph({
-            text: "",
-          }),
-        ] : []),
-      ],
-    }],
-  });
-
+// Enhanced canvas capture with error handling
+const captureElementToCanvas = async (element, options = {}) => {
   try {
-    const blob = await Packer.toBlob(doc);
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${lessonPlan.filename}.docx`;
-    link.click();
-    window.URL.revokeObjectURL(url);
+    // Ensure element is properly rendered
+    await waitForElementToRender(element);
+    
+    // Validate element dimensions
+    const rect = element.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      throw new Error(`Invalid element dimensions: ${rect.width}x${rect.height}`);
+    }
+    
+    // Default options with error handling
+    const canvasOptions = {
+      useCORS: true,
+      scale: 2,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: rect.width,
+      height: rect.height,
+      ...options
+    };
+    
+    // Capture with html2canvas
+    const canvas = await html2canvas(element, canvasOptions);
+    
+    // Validate canvas dimensions
+    if (canvas.width === 0 || canvas.height === 0) {
+      throw new Error(`Generated canvas has invalid dimensions: ${canvas.width}x${canvas.height}`);
+    }
+    
+    return canvas;
   } catch (error) {
-    console.error('Error generating DOCX:', error);
-    throw new Error('Failed to generate DOCX document');
+    console.error('Canvas capture error:', error);
+    throw new Error(`Failed to capture element: ${error.message}`);
+  }
+};
+
+// Export timetable as PDF
+export const exportTimetableToPDF = async (elementId = 'timetable-grid') => {
+  try {
+    const element = document.getElementById(elementId);
+    if (!element) {
+      throw new Error(`Element with ID '${elementId}' not found`);
+    }
+    
+    // Show loading state
+    const loadingToast = document.createElement('div');
+    loadingToast.textContent = 'Generating PDF...';
+    loadingToast.style.cssText = 'position:fixed;top:20px;right:20px;background:#3b82f6;color:white;padding:12px 16px;border-radius:8px;z-index:9999;';
+    document.body.appendChild(loadingToast);
+    
+    try {
+      const canvas = await captureElementToCanvas(element);
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Create PDF with proper dimensions
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`timetable-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      // Success notification
+      loadingToast.textContent = 'PDF exported successfully!';
+      loadingToast.style.background = '#10b981';
+      setTimeout(() => document.body.removeChild(loadingToast), 2000);
+      
+    } catch (captureError) {
+      throw captureError;
+    } finally {
+      if (document.body.contains(loadingToast)) {
+        document.body.removeChild(loadingToast);
+      }
+    }
+    
+  } catch (error) {
+    console.error('PDF export error:', error);
+    
+    // Error notification
+    const errorToast = document.createElement('div');
+    errorToast.textContent = `Export failed: ${error.message}`;
+    errorToast.style.cssText = 'position:fixed;top:20px;right:20px;background:#ef4444;color:white;padding:12px 16px;border-radius:8px;z-index:9999;';
+    document.body.appendChild(errorToast);
+    setTimeout(() => document.body.removeChild(errorToast), 5000);
+    
+    throw error;
+  }
+};
+
+// Export timetable as image
+export const exportTimetableToImage = async (elementId = 'timetable-grid', format = 'png') => {
+  try {
+    const element = document.getElementById(elementId);
+    if (!element) {
+      throw new Error(`Element with ID '${elementId}' not found`);
+    }
+    
+    const canvas = await captureElementToCanvas(element);
+    const link = document.createElement('a');
+    link.download = `timetable-${new Date().toISOString().split('T')[0]}.${format}`;
+    link.href = canvas.toDataURL(`image/${format}`);
+    link.click();
+    
+    return canvas;
+  } catch (error) {
+    console.error('Image export error:', error);
+    throw error;
+  }
+};
+
+// Print timetable
+export const printTimetable = async (elementId = 'timetable-grid') => {
+  try {
+    const element = document.getElementById(elementId);
+    if (!element) {
+      throw new Error(`Element with ID '${elementId}' not found`);
+    }
+    
+    await waitForElementToRender(element);
+    
+    const canvas = await captureElementToCanvas(element);
+    const imgData = canvas.toDataURL('image/png');
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Timetable</title>
+          <style>
+            body { margin: 0; padding: 20px; }
+            img { max-width: 100%; height: auto; }
+            @media print { 
+              body { padding: 0; }
+              img { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${imgData}" alt="Timetable" />
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+      printWindow.close();
+    };
+    
+} catch (error) {
+    console.error('Print error:', error);
+    throw error;
   }
 };

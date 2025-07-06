@@ -9,7 +9,7 @@ import Error from '@/components/ui/Error';
 import Empty from '@/components/ui/Empty';
 import TimetableGrid from '@/components/organisms/TimetableGrid';
 import StatsCard from '@/components/molecules/StatsCard';
-import RecentLessonPlans from '@/components/organisms/RecentLessonPlans';
+import EditLessonPlanModal from '@/components/organisms/EditLessonPlanModal';
 import { timetableService } from '@/services/api/timetableService';
 import { lessonPlanService } from '@/services/api/lessonPlanService';
 
@@ -19,7 +19,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [upcomingClass, setUpcomingClass] = useState(null);
-
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedLessonPlan, setSelectedLessonPlan] = useState(null);
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -76,6 +77,64 @@ const Dashboard = () => {
         break;
       }
     }
+};
+
+  const handleTimetableCellClick = async (cellData) => {
+    if (!cellData.class) {
+      toast.info('No class scheduled for this slot');
+      return;
+    }
+
+    try {
+      // Look for existing lesson plan for this class slot
+      const existingPlan = lessonPlans.find(plan => 
+        plan.subject === cellData.class.subject &&
+        plan.className === cellData.class.class &&
+        format(new Date(plan.date), 'EEEE').toLowerCase() === cellData.day &&
+        plan.time === cellData.time
+      );
+
+      if (existingPlan) {
+        setSelectedLessonPlan(existingPlan);
+      } else {
+        // Create new lesson plan template
+        const newPlan = {
+          filename: `${cellData.class.subject}_${cellData.class.class}_${cellData.day}_${cellData.time}`,
+          subject: cellData.class.subject,
+          className: cellData.class.class,
+          date: new Date().toISOString().split('T')[0],
+          time: cellData.time,
+          duration: '60',
+          status: 'pending'
+        };
+        setSelectedLessonPlan(newPlan);
+      }
+      setEditModalOpen(true);
+    } catch (error) {
+      toast.error('Failed to load lesson plan');
+      console.error('Error loading lesson plan:', error);
+    }
+  };
+
+  const handleEditModalSave = async (planId, formData) => {
+    try {
+      if (planId) {
+        await lessonPlanService.update(planId, formData);
+      } else {
+        await lessonPlanService.create(formData);
+      }
+      await loadDashboardData();
+      setEditModalOpen(false);
+      setSelectedLessonPlan(null);
+    } catch (error) {
+      console.error('Error saving lesson plan:', error);
+      throw error;
+    }
+  };
+
+  const handleEditModalClose = () => {
+    setEditModalOpen(false);
+    setSelectedLessonPlan(null);
   };
 
   const getStats = () => {
@@ -99,7 +158,6 @@ const Dashboard = () => {
       totalPlans: lessonPlans.length,
     };
   };
-
   if (loading) return <Loading />;
   if (error) return <Error message={error} onRetry={loadDashboardData} />;
 
@@ -150,69 +208,39 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Timetable */}
-        <div className="lg:col-span-2">
-          <Card>
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 font-display">
-                Weekly Timetable
-              </h3>
-              <Button variant="outline" size="sm">
-                <ApperIcon name="Plus" size={16} />
-                Add Class
-              </Button>
-            </div>
-            <div className="p-6">
-              {timetable.length > 0 ? (
-                <TimetableGrid 
-                  timetable={timetable} 
-                  highlightToday={true}
-                  onCellClick={(slot) => {
-                    toast.info(`Selected: ${slot.subject} at ${slot.time}`);
-                  }}
-                />
-              ) : (
-                <Empty
-                  icon="Calendar"
-                  title="No timetable set up"
-                  description="Add your class schedule to see your weekly timetable"
-                  action={
-                    <Button>
-                      <ApperIcon name="Plus" size={16} />
-                      Set up timetable
-                    </Button>
-                  }
-                />
-              )}
-            </div>
-          </Card>
+{/* Weekly Timetable */}
+      <Card>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 font-display">
+            Weekly Timetable
+          </h3>
+          <Button variant="outline" size="sm">
+            <ApperIcon name="Plus" size={16} />
+            Add Class
+          </Button>
         </div>
-
-        {/* Recent Lesson Plans */}
-        <div>
-          <Card>
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 font-display">
-                Recent Lesson Plans
-              </h3>
-              <Button variant="outline" size="sm">
-                <ApperIcon name="Plus" size={16} />
-                Upload
-              </Button>
-            </div>
-            <div className="p-6">
-              <RecentLessonPlans 
-                lessonPlans={lessonPlans.slice(0, 5)} 
-                onView={(plan) => {
-                  toast.info(`Viewing: ${plan.filename}`);
-                }}
-              />
-            </div>
-          </Card>
+        <div className="p-6">
+          {timetable.length > 0 ? (
+            <TimetableGrid 
+              timetable={timetable} 
+              highlightToday={true}
+              onCellClick={handleTimetableCellClick}
+            />
+          ) : (
+            <Empty
+              icon="Calendar"
+              title="No timetable set up"
+              description="Add your class schedule to see your weekly timetable"
+              action={
+                <Button>
+                  <ApperIcon name="Plus" size={16} />
+                  Set up timetable
+                </Button>
+              }
+            />
+          )}
         </div>
-      </div>
+      </Card>
 
       {/* Quick Actions */}
       <Card>
@@ -244,7 +272,15 @@ const Dashboard = () => {
             </Button>
           </div>
         </div>
-      </Card>
+</Card>
+
+      {/* Edit Lesson Plan Modal */}
+      <EditLessonPlanModal
+        isOpen={editModalOpen}
+        onClose={handleEditModalClose}
+        lessonPlan={selectedLessonPlan}
+        onSave={handleEditModalSave}
+      />
     </div>
   );
 };

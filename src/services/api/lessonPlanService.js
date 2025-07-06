@@ -1,4 +1,4 @@
-import mockData from '@/services/mockData/lessonPlans.json';
+import mockData from "@/services/mockData/lessonPlans.json";
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -65,8 +65,28 @@ export const lessonPlanService = {
       ...mockData[index],
       ...contentData,
       updatedAt: new Date().toISOString(),
-    };
+};
+   
+   return { ...mockData[index] };
+ },
+
+ async getLessonPlansByWeek(weekStart, weekEnd) {
+    await delay(300);
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
     
-    return { ...mockData[index] };
+    const plansInWeek = mockData.filter(plan => {
+      const planDate = plan.date;
+      return planDate >= weekStartStr && planDate <= weekEndStr;
+    });
+    
+    return plansInWeek.map(plan => ({ ...plan }));
   },
+
+  async getLessonPlansByDate(date) {
+await delay(200);
+   const dateStr = date.toISOString().split('T')[0];
+   const plansForDate = mockData.filter(plan => plan.date === dateStr);
+   return plansForDate.map(plan => ({ ...plan }));
+ },
 };

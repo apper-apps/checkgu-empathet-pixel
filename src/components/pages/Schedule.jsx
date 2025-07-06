@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
-import Card from '@/components/atoms/Card';
-import Button from '@/components/atoms/Button';
-import ApperIcon from '@/components/ApperIcon';
-import Loading from '@/components/ui/Loading';
-import Error from '@/components/ui/Error';
-import Empty from '@/components/ui/Empty';
-import SubjectTable from '@/components/organisms/SubjectTable';
-import TimetableEditor from '@/components/organisms/TimetableEditor';
-import SubjectModal from '@/components/organisms/SubjectModal';
-import { subjectService } from '@/services/api/subjectService';
-import { timetableService } from '@/services/api/timetableService';
+import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import ApperIcon from "@/components/ApperIcon";
+import TimetableEditor from "@/components/organisms/TimetableEditor";
+import SubjectModal from "@/components/organisms/SubjectModal";
+import SubjectTable from "@/components/organisms/SubjectTable";
+import WeeklyTimetableNavigator from "@/components/organisms/WeeklyTimetableNavigator";
+import Button from "@/components/atoms/Button";
+import Card from "@/components/atoms/Card";
+import Empty from "@/components/ui/Empty";
+import Error from "@/components/ui/Error";
+import Loading from "@/components/ui/Loading";
+import { timetableService } from "@/services/api/timetableService";
+import { subjectService } from "@/services/api/subjectService";
 
 const Schedule = () => {
   const [subjects, setSubjects] = useState([]);
@@ -189,28 +190,26 @@ const Schedule = () => {
         </Card>
       )}
 
-      {activeTab === 'timetable' && (
+{activeTab === 'timetable' && (
         <Card>
           <div className="p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 font-display">
-              Weekly Timetable
+              Browse Lesson Plans
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Drag and drop subjects to create your weekly schedule
+              Navigate through weeks to find and access your lesson plans
             </p>
           </div>
           <div className="p-6">
-            {subjects.length > 0 ? (
-              <TimetableEditor
-                subjects={subjects}
+            {timetable.length > 0 ? (
+              <WeeklyTimetableNavigator
                 timetable={timetable}
-                onUpdate={handleTimetableUpdate}
               />
             ) : (
               <Empty
                 icon="Calendar"
-                title="Add subjects first"
-                description="You need to add subjects before creating your timetable"
+                title="No timetable available"
+                description="Set up your weekly timetable to browse lesson plans by week"
                 action={
                   <Button onClick={() => setActiveTab('subjects')}>
                     <ApperIcon name="BookOpen" size={16} />

@@ -1,7 +1,7 @@
 import { format, isSameDay } from 'date-fns';
 import ApperIcon from '@/components/ApperIcon';
 
-const TimetableGrid = ({ timetable, highlightToday = false, onCellClick }) => {
+const TimetableGrid = ({ timetable, highlightToday = false, onCellClick, lessonPlans = [] }) => {
   const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -12,6 +12,16 @@ const TimetableGrid = ({ timetable, highlightToday = false, onCellClick }) => {
   const getClassForSlot = (day, time) => {
     return timetable.find(slot => 
       slot.day.toLowerCase() === day && slot.time === time
+    );
+  };
+
+  const getLessonPlanForSlot = (day, time) => {
+    const classData = getClassForSlot(day, time);
+    if (!classData) return null;
+    
+    return lessonPlans.find(plan => 
+      plan.subject === classData.subject && 
+      plan.class === classData.class
     );
   };
 
@@ -57,18 +67,23 @@ const TimetableGrid = ({ timetable, highlightToday = false, onCellClick }) => {
               </div>
               {days.map(day => {
                 const classData = getClassForSlot(day, time);
+                const lessonPlan = getLessonPlanForSlot(day, time);
                 const isCurrentDay = highlightToday && currentDay === day;
                 
                 return (
                   <div
                     key={`${day}-${time}`}
-                    className={`timetable-cell cursor-pointer flex items-center justify-center p-2 ${
+                    className={`timetable-cell flex items-center justify-center p-2 ${
                       isCurrentDay ? 'current-day' : ''
-                    } ${classData ? 'has-class' : ''}`}
-                    onClick={() => onCellClick && onCellClick({ day, time, class: classData })}
+                    } ${classData ? 'has-class' : ''} ${
+                      lessonPlan ? 'cursor-pointer hover:bg-gray-50' : ''
+                    }`}
+                    onClick={() => onCellClick && onCellClick({ day, time, class: classData, lessonPlan })}
                   >
                     {classData ? (
-                      <div className={`w-full h-full rounded-md border-2 p-2 flex flex-col items-center justify-center text-center ${getSubjectColor(classData.subject)}`}>
+                      <div className={`w-full h-full rounded-md border-2 p-2 flex flex-col items-center justify-center text-center transition-all ${
+                        lessonPlan ? 'hover:shadow-md hover:scale-105' : 'opacity-60'
+                      } ${getSubjectColor(classData.subject)}`}>
                         <div className="font-medium text-sm">{classData.subject}</div>
                         <div className="text-xs opacity-80">{classData.class}</div>
                         {classData.room && (
@@ -77,11 +92,15 @@ const TimetableGrid = ({ timetable, highlightToday = false, onCellClick }) => {
                             {classData.room}
                           </div>
                         )}
+                        {lessonPlan && (
+                          <div className="text-xs opacity-60 flex items-center mt-1">
+                            <ApperIcon name="FileText" size={12} className="mr-1" />
+                            <span>Lesson Plan</span>
+                          </div>
+                        )}
                       </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 hover:text-gray-600">
-                        <ApperIcon name="Plus" size={16} />
-                      </div>
+                      <div className="w-full h-full"></div>
                     )}
                   </div>
                 );

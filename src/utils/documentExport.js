@@ -1,9 +1,6 @@
 import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
-import React from "react";
-import Error from "@/components/ui/Error";
-
 export const exportToPDF = (lessonPlan) => {
   const doc = new jsPDF();
   const margin = 20;
@@ -211,12 +208,16 @@ export const exportToDOCX = async (lessonPlan) => {
             text: "",
           }),
         ] : []),
-        ...(lessonPlan.notes ? [
+...(lessonPlan.notes ? [
           new Paragraph({
             text: "ADDITIONAL NOTES",
             heading: HeadingLevel.HEADING_2,
-new Paragraph({
+          }),
+          new Paragraph({
             text: lessonPlan.notes,
+          }),
+          new Paragraph({
+            text: "",
           }),
         ] : []),
       ],

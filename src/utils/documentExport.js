@@ -185,12 +185,11 @@ export const printTimetable = async (elementId = 'timetable-grid') => {
       printWindow.print();
       printWindow.close();
     };
-};
-    
   } catch (error) {
     console.error('Print error:', error);
     throw error;
   }
+};
 
 // Export lesson plan as PDF
 export const exportToPDF = async (lessonPlan) => {

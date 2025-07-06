@@ -1,9 +1,6 @@
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
-import React from "react";
-import Error from "@/components/ui/Error";
-
 // Enhanced element validation for canvas operations
 const validateElementForCapture = (element) => {
   if (!element) {
@@ -48,7 +45,6 @@ const validateElementForCapture = (element) => {
   }
 }
 
-// Wait for element to be ready for export
 // Wait for element to be ready for export
 const waitForElementReady = async (element, timeout = 5000) => {
   return new Promise((resolve, reject) => {
@@ -99,11 +95,10 @@ const waitForElementReady = async (element, timeout = 5000) => {
       }
     }
     
-    checkReady()
+checkReady()
   })
-})
 }
-// Enhanced viewport capture with comprehensive validation
+
 // Enhanced viewport capture with comprehensive validation
 export const captureViewport = async (element, options = {}) => {
   try {
@@ -179,11 +174,10 @@ export const captureViewport = async (element, options = {}) => {
     }
     
     console.error('Capture error details:', errorDetails)
-    throw new Error(`Failed to capture viewport: ${error.message}`)
 throw new Error(`Failed to capture viewport: ${error.message}`)
   }
 }
-// Export timetable to PDF with enhanced error handling
+
 // Export timetable to PDF with enhanced error handling
 export const exportToPDF = async (element, filename = 'timetable.pdf') => {
   try {
@@ -453,7 +447,6 @@ export const printTimetable = async (elementId = 'timetable-grid') => {
   }
 };
 
-// Export lesson plan as PDF
 // Export lesson plan as PDF
 export const exportLessonPlanToPDF = async (lessonPlan) => {
   try {

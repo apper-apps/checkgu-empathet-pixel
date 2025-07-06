@@ -405,7 +405,6 @@ export const printTimetable = async (elementId = 'timetable-grid') => {
 // Export lesson plan as PDF
 export const exportLessonPlanToPDF = async (lessonPlan) => {
   try {
-  try {
     if (!lessonPlan) {
       throw new Error('Lesson plan data is required');
     }
@@ -513,7 +512,7 @@ export const exportToDOCX = async (lessonPlan) => {
     // Create document sections
     const children = [
       // Title
-      new Paragraph({
+new Paragraph({
         children: [
           new TextRun({
             text: "Lesson Plan",
@@ -521,7 +520,6 @@ export const exportToDOCX = async (lessonPlan) => {
             size: 32,
           }),
         ],
-],
         spacing: { after: 400 },
       }),
     ];
@@ -557,7 +555,7 @@ export const exportToDOCX = async (lessonPlan) => {
     // Add sections with headings
     const addSection = (title, content) => {
       if (content && content.toString().trim()) {
-        children.push(
+children.push(
           new Paragraph({
             children: [
               new TextRun({
@@ -566,7 +564,6 @@ export const exportToDOCX = async (lessonPlan) => {
                 size: 24,
               }),
             ],
-],
             spacing: { before: 400, after: 200 },
           }),
           new Paragraph({
@@ -592,7 +589,7 @@ export const exportToDOCX = async (lessonPlan) => {
     }
 
     // Add footer
-    children.push(
+children.push(
       new Paragraph({
         children: [
           new TextRun({
@@ -600,7 +597,7 @@ export const exportToDOCX = async (lessonPlan) => {
             italics: true,
             size: 20,
           }),
-],
+        ],
         spacing: { before: 600 },
       })
     );

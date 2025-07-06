@@ -4,19 +4,20 @@ import ApperIcon from "@/components/ApperIcon";
 import Error from "@/components/ui/Error";
 import Loading from "@/components/ui/Loading";
 
-const TimetableGrid = ({ 
-  timetable = [], 
-  lessonPlans = [], 
-  highlightToday = false, 
+function TimetableGrid({ 
+  timetable, 
+  lessonPlans, 
+  highlightToday = true, 
   onCellClick,
   className = '',
-  id = 'timetable-grid'
-}) => {
-  const [isLoading, setIsLoading] = useState(true)
+  exportMode = false 
+}) {
+const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const [isExportReady, setIsExportReady] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const [error, setError] = useState(null)
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const [isLoading, setIsLoading] = useState(true)
   const gridRef = useRef(null)
-
   const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00']
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -34,47 +35,88 @@ const TimetableGrid = ({
   const today = new Date()
 
   // Effect to handle component mounting and dimension tracking
-useEffect(() => {
-    const handleResize = () => {
-      if (gridRef.current) {
-        try {
-          const rect = gridRef.current.getBoundingClientRect()
-          
-          // Validate dimensions to prevent canvas zero-dimension errors
-          const width = Math.max(rect.width, 100) // Minimum width of 100px
-          const height = Math.max(rect.height, 200) // Minimum height of 200px
-          
-          // Only update if dimensions are valid
-          if (width > 0 && height > 0) {
-            setDimensions({ width, height })
-          }
-        } catch (err) {
-          console.error('Error calculating grid dimensions:', err)
-          // Fallback to default dimensions
-          setDimensions({ width: 800, height: 600 })
-        }
+// Enhanced canvas-safe dimension validation
+  const validateDimensions = (rect) => {
+    const width = Math.max(rect.width || 0, 100)
+    const height = Math.max(rect.height || 0, 200)
+    
+    // Stricter validation for canvas operations
+    return {
+      width,
+      height,
+      isValid: width >= 100 && height >= 200 && rect.width > 0 && rect.height > 0
+    }
+  }
+
+  const checkVisibility = () => {
+    if (!gridRef.current) return false
+    
+    const rect = gridRef.current.getBoundingClientRect()
+    const style = window.getComputedStyle(gridRef.current)
+    
+    return (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      style.visibility !== 'hidden' &&
+      style.display !== 'none' &&
+      style.opacity !== '0'
+    )
+  }
+
+  const updateDimensionsAndReadiness = () => {
+    if (!gridRef.current) return
+    
+    try {
+      const rect = gridRef.current.getBoundingClientRect()
+      const validation = validateDimensions(rect)
+      const visible = checkVisibility()
+      
+      setIsVisible(visible)
+      
+      if (validation.isValid && visible) {
+        setDimensions({ width: validation.width, height: validation.height })
+        setIsExportReady(true)
+      } else {
+        setIsExportReady(false)
       }
+    } catch (err) {
+      console.error('Error updating grid dimensions:', err)
+      setIsExportReady(false)
+      setDimensions({ width: 800, height: 600 })
+    }
+  }
+
+  useEffect(() => {
+    const handleResize = () => {
+      updateDimensionsAndReadiness()
     }
 
     const initializeGrid = () => {
       try {
         if (gridRef.current) {
-          // Wait for DOM to be fully rendered
-          requestAnimationFrame(() => {
-            handleResize()
+          // Multiple checks to ensure DOM is ready
+          const checkAndUpdate = () => {
+            updateDimensionsAndReadiness()
             setIsLoading(false)
             setError(null)
+          }
+          
+          // Progressive checks for DOM readiness
+          requestAnimationFrame(() => {
+            setTimeout(checkAndUpdate, 100)
           })
         }
       } catch (err) {
         console.error('TimetableGrid initialization error:', err)
         setError(err.message)
         setIsLoading(false)
+        setIsExportReady(false)
       }
     }
 
-    // Initialize after component mounts with longer delay for DOM readiness
-    const timer = setTimeout(initializeGrid, 200)
+    // Initialize with multiple fallback timers
+    const timer1 = setTimeout(initializeGrid, 100)
+    const timer2 = setTimeout(initializeGrid, 500)
     
     // Add resize listener with debouncing
     let resizeTimeout
@@ -86,33 +128,38 @@ useEffect(() => {
     window.addEventListener('resize', debouncedResize)
     
     return () => {
-      clearTimeout(timer)
+      clearTimeout(timer1)
+      clearTimeout(timer2)
       clearTimeout(resizeTimeout)
       window.removeEventListener('resize', debouncedResize)
     }
   }, [])
 
   // Update dimensions when timetable data changes
+// Update dimensions when timetable data changes
   useEffect(() => {
     if (gridRef.current && timetable.length > 0) {
       try {
         // Wait for re-render after data change
         requestAnimationFrame(() => {
-          const rect = gridRef.current.getBoundingClientRect()
-          
-          // Validate dimensions
-          const width = Math.max(rect.width, 100)
-          const height = Math.max(rect.height, 200)
-          
-          if (width > 0 && height > 0) {
-            setDimensions({ width, height })
-          }
+          setTimeout(() => {
+            updateDimensionsAndReadiness()
+          }, 150)
         })
       } catch (err) {
         console.error('Error updating grid dimensions:', err)
+        setIsExportReady(false)
       }
     }
   }, [timetable])
+
+  // Expose export readiness for parent components
+  useEffect(() => {
+    if (gridRef.current) {
+      gridRef.current.dataset.exportReady = isExportReady ? 'true' : 'false'
+      gridRef.current.dataset.isVisible = isVisible ? 'true' : 'false'
+    }
+  }, [isExportReady, isVisible])
 
   const getClassForSlot = (day, time) => {
     try {
@@ -186,12 +233,11 @@ return colors[subject] || "bg-gray-100 text-gray-800 border-gray-200"
     )
   }
 
-  return (
+return (
     <div className={`w-full ${className}`} style={{ minHeight: '400px' }}>
       {/* Grid container with proper ID for export functionality */}
       <div 
         ref={gridRef}
-        id={id}
         className="timetable-grid mb-4"
         style={{ 
           minWidth: '800px',
@@ -207,7 +253,7 @@ return colors[subject] || "bg-gray-100 text-gray-800 border-gray-200"
         <div className="timetable-cell flex items-center justify-center font-semibold text-gray-700 bg-gray-50">
           Time
         </div>
-{dayLabels.map(day => (
+        {dayLabels.map(day => (
           <div key={day} className="timetable-cell flex items-center justify-center font-semibold text-gray-700 bg-gray-50">
             {day}
           </div>
@@ -236,7 +282,7 @@ return colors[subject] || "bg-gray-100 text-gray-800 border-gray-200"
                   onClick={() => onCellClick && onCellClick({ day, time, class: classData, lessonPlan })}
                   style={{ minHeight: '60px' }}
                 >
-{classData ? (
+                  {classData ? (
                     <div className={`w-full h-full rounded-md border-2 p-2 flex flex-col items-center justify-center text-center transition-all ${
                       lessonPlan ? 'hover:shadow-md hover:scale-105' : 'opacity-60'
                     } ${getSubjectColor(classData.subject)}`}>
@@ -249,30 +295,23 @@ return colors[subject] || "bg-gray-100 text-gray-800 border-gray-200"
                         </div>
                       )}
                       {lessonPlan && (
-                        <div className="text-xs opacity-60 flex items-center mt-1">
+                        <div className="text-xs mt-1 flex items-center">
                           <ApperIcon name="FileText" size={12} className="mr-1" />
-                          <span>Lesson Plan</span>
+                          Plan Ready
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="w-full h-full" style={{ minHeight: '40px' }}></div>
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                      Free
+                    </div>
                   )}
                 </div>
               )
             })}
           </React.Fragment>
-))}
+        ))}
       </div>
-
-{/* Debug information (only in development) */}
-      {(typeof window !== 'undefined' && window.location?.hostname === 'localhost') && (
-        <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
-          Grid dimensions: {dimensions.width}x{dimensions.height} | 
-          Timetable entries: {timetable.length} | 
-          Export ready: {dimensions.width > 0 && dimensions.height > 0 ? 'Yes' : 'No'}
-        </div>
-      )}
     </div>
   )
 }

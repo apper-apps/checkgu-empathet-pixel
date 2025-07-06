@@ -142,9 +142,8 @@ const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
       toast.success(`Lesson plan marked as ${newStatus}`);
     } catch (err) {
       toast.error('Failed to update status');
-      console.error('Status update error:', err);
+console.error('Status update error:', err);
     }
-}
   };
 
   const handleEdit = (lessonPlan) => {
@@ -166,8 +165,9 @@ const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   };
 
   const getUniqueSubjects = () => {
-    const subjects = [...new Set(lessonPlans.map(plan => plan.subject))];
+const subjects = [...new Set(lessonPlans.map(plan => plan.subject))];
     return subjects.sort();
+  };
 
   if (loading) return <Loading />;
   if (error) return <Error message={error} onRetry={loadLessonPlans} />;

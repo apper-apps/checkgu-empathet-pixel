@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { format } from 'date-fns';
-import { toast } from 'react-toastify';
-import ApperIcon from '@/components/ApperIcon';
-import Button from '@/components/atoms/Button';
-import { exportToPDF, exportToDOCX } from '@/utils/documentExport';
+import React, { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { toast } from "react-toastify";
+import { exportToDOCX, exportToPDF } from "@/utils/documentExport";
+import ApperIcon from "@/components/ApperIcon";
+import Button from "@/components/atoms/Button";
 
 const LessonPlanTable = ({ lessonPlans, onDelete, onStatusUpdate, onEdit }) => {
   const [downloadingId, setDownloadingId] = useState(null);
@@ -32,7 +32,42 @@ const LessonPlanTable = ({ lessonPlans, onDelete, onStatusUpdate, onEdit }) => {
       default:
         return 'FileText';
     }
+};
+
+  const handleDownload = async (plan, format) => {
+    try {
+      setDownloadingId(plan.Id);
+      setShowDownloadMenu(null);
+      
+      if (format === 'pdf') {
+        exportToPDF(plan);
+        toast.success('PDF downloaded successfully');
+      } else if (format === 'docx') {
+        await exportToDOCX(plan);
+        toast.success('DOCX downloaded successfully');
+      }
+    } catch (error) {
+      toast.error(`Failed to download ${format.toUpperCase()}`);
+      console.error('Download error:', error);
+    } finally {
+      setDownloadingId(null);
+    }
   };
+
+  // Handle clicking outside to close download menu
+  const handleClickOutside = (e) => {
+    if (!e.target.closest('.relative')) {
+      setShowDownloadMenu(null);
+    }
+  };
+
+  // Add event listener for clicking outside
+  React.useEffect(() => {
+    if (showDownloadMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showDownloadMenu]);
 
   return (
     <div className="overflow-x-auto">
@@ -94,7 +129,7 @@ const LessonPlanTable = ({ lessonPlans, onDelete, onStatusUpdate, onEdit }) => {
                   {plan.status}
                 </span>
               </td>
-<td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div className="flex items-center justify-end space-x-2">
                   <Button
                     variant="ghost"
@@ -160,46 +195,13 @@ const LessonPlanTable = ({ lessonPlans, onDelete, onStatusUpdate, onEdit }) => {
                     <ApperIcon name="Trash2" size={16} />
                   </Button>
                 </div>
-</td>
+              </td>
             </tr>
           ))}
         </tbody>
-      </table>
+</table>
     </div>
   );
-
-  const handleDownload = async (plan, format) => {
-    try {
-      setDownloadingId(plan.Id);
-      setShowDownloadMenu(null);
-      
-      if (format === 'pdf') {
-        exportToPDF(plan);
-        toast.success('PDF downloaded successfully');
-      } else if (format === 'docx') {
-        await exportToDOCX(plan);
-        toast.success('DOCX downloaded successfully');
-      }
-    } catch (error) {
-      toast.error(`Failed to download ${format.toUpperCase()}`);
-      console.error('Download error:', error);
-    } finally {
-      setDownloadingId(null);
-    }
-  };
-
-  // Close download menu when clicking outside
-  const handleClickOutside = (e) => {
-    if (!e.target.closest('.relative')) {
-      setShowDownloadMenu(null);
-    }
-  };
-
-  // Add click outside listener
-  if (showDownloadMenu) {
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }
 };
 
 export default LessonPlanTable;

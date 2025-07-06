@@ -6,10 +6,10 @@ import Input from '@/components/atoms/Input';
 import Card from '@/components/atoms/Card';
 
 const EditLessonPlanModal = ({ isOpen, onClose, lessonPlan, onSave }) => {
-  const [formData, setFormData] = useState({
+const [formData, setFormData] = useState({
     filename: '',
     subject: '',
-    class: '',
+    className: '',
     duration: '',
     objectives: '',
     materials: '',
@@ -20,12 +20,12 @@ const EditLessonPlanModal = ({ isOpen, onClose, lessonPlan, onSave }) => {
   });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     if (lessonPlan) {
       setFormData({
         filename: lessonPlan.filename || '',
         subject: lessonPlan.subject || '',
-        class: lessonPlan.class || '',
+        className: lessonPlan.className || '',
         duration: lessonPlan.duration || '',
         objectives: lessonPlan.objectives || '',
         materials: lessonPlan.materials || '',
@@ -108,14 +108,14 @@ const EditLessonPlanModal = ({ isOpen, onClose, lessonPlan, onSave }) => {
                 />
               </div>
 
-              <div>
+<div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Class *
                 </label>
                 <Input
                   type="text"
-                  value={formData.class}
-                  onChange={(e) => handleChange('class', e.target.value)}
+                  value={formData.className}
+                  onChange={(e) => handleChange('className', e.target.value)}
                   placeholder="Enter class"
                   required
                 />
